@@ -219,7 +219,6 @@ enum adreno_device_flags {
 	ADRENO_DEVICE_PWRON_FIXUP = 1,
 	ADRENO_DEVICE_INITIALIZED = 2,
 	ADRENO_DEVICE_STARTED = 3,
-	ADRENO_DEVICE_HANG_INTR = 4,
 };
 
 #define PERFCOUNTER_FLAG_NONE 0x0
@@ -465,7 +464,6 @@ void adreno_coresight_disable(struct coresight_device *csdev);
 void adreno_coresight_remove(struct platform_device *pdev);
 int adreno_coresight_init(struct platform_device *pdev);
 
-bool adreno_hw_isidle(struct kgsl_device *device);
 int adreno_idle(struct kgsl_device *device);
 bool adreno_isidle(struct kgsl_device *device);
 
@@ -572,6 +570,8 @@ static inline int adreno_is_a2xx(struct adreno_device *adreno_dev)
 {
 	return (adreno_dev->gpurev <= 299);
 }
+
+bool adreno_hw_isidle(struct kgsl_device *device);
 
 static inline int adreno_is_a3xx(struct adreno_device *adreno_dev)
 {
@@ -717,11 +717,6 @@ static inline int adreno_add_read_cmds(struct kgsl_device *device,
 	*cmds++ = val;
 	*cmds++ = 0xFFFFFFFF;
 	*cmds++ = 0xFFFFFFFF;
-
-	/* WAIT_REG_MEM turns back on protected mode - push it off */
-	*cmds++ = cp_type3_packet(CP_SET_PROTECTED_MODE, 1);
-	*cmds++ = 0;
-
 	cmds += __adreno_add_idle_indirect_cmds(cmds, nop_gpuaddr);
 	return cmds - start;
 }
