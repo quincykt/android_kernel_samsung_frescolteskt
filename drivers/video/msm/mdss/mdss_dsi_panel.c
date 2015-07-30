@@ -36,6 +36,10 @@
 #endif /* CONFIG_FB_MSM_MDSS_MDP3 */
 #include "mdss_dsi.h"
 
+#ifdef CONFIG_POWERSUSPEND
+#include <linux/powersuspend.h>
+#endif
+
 #if defined(CONFIG_FB_MSM_MDSS_MDP3)
 static struct mdss_dsi_driver_data msd;
 #if defined(CONFIG_MDNIE_LITE_TUNING)
@@ -423,6 +427,11 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 #endif
 
 	pr_debug("%s:-\n", __func__);
+
+#ifdef CONFIG_POWERSUSPEND
+	set_power_suspend_state_panel_hook(POWER_SUSPEND_INACTIVE);
+#endif
+
 	return 0;
 }
 
@@ -453,6 +462,11 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 #endif
 
 	pr_debug("%s:-\n", __func__);
+
+#ifdef CONFIG_POWERSUSPEND
+	set_power_suspend_state_panel_hook(POWER_SUSPEND_ACTIVE);
+#endif
+
 	return 0;
 }
 
