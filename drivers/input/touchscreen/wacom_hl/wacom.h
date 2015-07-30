@@ -20,6 +20,10 @@
 #include <linux/earlysuspend.h>
 #endif
 
+#ifdef CONFIG_POWERSUSPEND
+#include <linux/powersuspend.h>
+#endif
+
 #include "wacom_i2c.h"
 
 #ifdef CONFIG_INPUT_BOOSTER
@@ -455,6 +459,9 @@ struct wacom_i2c {
 	struct input_dev *input_dev;
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend early_suspend;
+#endif
+#ifdef CONFIG_POWERSUSPEND
+	struct power_suspend power_suspend;
 #endif
 	struct mutex lock;
 	struct mutex update_lock;

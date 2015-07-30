@@ -24,6 +24,9 @@
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
 #endif
+#ifdef CONFIG_POWERSUSPEND
+#include <linux/powersuspend.h>
+#endif
 #include <linux/uaccess.h>
 #include <linux/firmware.h>
 #include "wacom_i2c_func.h"
@@ -33,7 +36,7 @@
 #endif
 
 #ifdef CONFIG_OF
-#define WACOM_OPEN_CLOSE
+#undef WACOM_OPEN_CLOSE
 #undef CONFIG_PM
 #undef CONFIG_HAS_EARLYSUSPEND
 #endif
@@ -383,6 +386,26 @@ static void wacom_i2c_late_resume(struct early_suspend *h)
 	wacom_power_on(wac_i2c);
 }
 #endif
+#ifdef CONFIG_POWERSUSPEND
+static void wacom_i2c_early_suspend(struct power_suspend *h)
+{
+	struct wacom_i2c *wac_i2c =
+	    container_of(h, struct wacom_i2c, power_suspend);
+	printk(KERN_DEBUG "epen:%s.\n", __func__);
+	printk("SHPWRDBG: wacom is suspend");
+	wacom_power_off(wac_i2c);
+}
+
+static void wacom_i2c_late_resume(struct power_suspend *h)
+{
+	struct wacom_i2c *wac_i2c =
+		container_of(h, struct wacom_i2c, power_suspend);
+
+	printk(KERN_DEBUG "epen:%s.\n", __func__);
+	printk("SHPWRDBG: wacom is resume");
+	wacom_power_on(wac_i2c);
+}
+#endif
 
 static void wacom_i2c_resume_work(struct work_struct *work)
 {
@@ -476,7 +499,7 @@ static void wacom_i2c_block_softkey_work(struct work_struct *work)
 	wac_i2c->block_softkey = false;
 }
 #endif
-#ifdef CONFIG_HAS_EARLYSUSPEND
+#if defined(CONFIG_HAS_EARLYSUSPEND) || defined(CONFIG_POWERSUSPEND)
 #define wacom_i2c_suspend	NULL
 #define wacom_i2c_resume	NULL
 
@@ -1601,6 +1624,12 @@ static int wacom_i2c_probe(struct i2c_client *client, const struct i2c_device_id
 	wac_i2c->early_suspend.suspend = wacom_i2c_early_suspend;
 	wac_i2c->early_suspend.resume = wacom_i2c_late_resume;
 	register_early_suspend(&wac_i2c->early_suspend);
+#endif
+
+#ifdef CONFIG_POWERSUSPEND
+	wac_i2c->power_suspend.suspend = wacom_i2c_early_suspend;
+	wac_i2c->power_suspend.resume = wacom_i2c_late_resume;
+	register_power_suspend(&wac_i2c->power_suspend);
 #endif
 
 	wac_i2c->dev = device_create(sec_class, NULL, 0, NULL, "sec_epen");

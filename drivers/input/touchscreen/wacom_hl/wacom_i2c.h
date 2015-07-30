@@ -7,6 +7,10 @@
 #include <linux/earlysuspend.h>
 #endif
 
+#ifdef CONFIG_POWERSUSPEND
+#include <linux/powersuspend.h>
+#endif
+
 /*I2C address for digitizer and its boot loader*/
 #define WACOM_I2C_ADDR 0x56
 #if defined(CONFIG_EPEN_WACOM_G9PL) \
@@ -82,7 +86,7 @@ struct wacom_g5_platform_data {
 	int (*exit_platform_hw)(void);
 	int (*suspend_platform_hw)(void);
 	int (*resume_platform_hw)(void);
-#ifdef CONFIG_HAS_EARLYSUSPEND
+#if defined(CONFIG_HAS_EARLYSUSPEND) || defined(CONFIG_POWERSUSPEND)
 	int (*early_suspend_platform_hw)(void);
 	int (*late_resume_platform_hw)(void);
 #endif
