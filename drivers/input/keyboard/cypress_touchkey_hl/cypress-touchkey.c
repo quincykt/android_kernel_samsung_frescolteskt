@@ -28,6 +28,9 @@
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
 #endif
+#ifdef CONFIG_POWERSUSPEND
+#include <linux/powersuspend.h>
+#endif
 #include <linux/io.h>
 #include <linux/regulator/consumer.h>
 #include <linux/firmware.h>
@@ -1394,7 +1397,7 @@ static void touchkey_open_work(struct work_struct *work)
 }
 #endif
 
-#define USE_OPEN_CLOSE
+#undef USE_OPEN_CLOSE
 static int touchkey_input_open(struct input_dev *dev)
 {
 	struct touchkey_i2c *data = input_get_drvdata(dev);
@@ -1468,6 +1471,36 @@ static int sec_touchkey_late_resume(struct early_suspend *h)
 	return 0;
 }
 #else
+#ifdef CONFIG_POWERSUSPEND
+//#define touchkey_suspend	NULL
+//#define touchkey_resume	NULL
+
+static int sec_touchkey_early_suspend(struct power_suspend *h)
+{
+	struct touchkey_i2c *tkey_i2c =
+		container_of(h, struct touchkey_i2c, power_suspend);
+
+	touchkey_stop(tkey_i2c);
+
+	dev_dbg(&tkey_i2c->client->dev, "%s\n", __func__);
+	printk("SHPWRDBG: CYPRESS SUSPEND \n");
+
+	return 0;
+}
+
+static int sec_touchkey_late_resume(struct power_suspend *h)
+{
+	struct touchkey_i2c *tkey_i2c =
+		container_of(h, struct touchkey_i2c, power_suspend);
+
+	dev_dbg(&tkey_i2c->client->dev, "%s\n", __func__);
+
+	touchkey_start(tkey_i2c);
+	printk("SHPWRDBG: CYPRESS RESUME \n");
+
+	return 0;
+}
+#else
 static int touchkey_suspend(struct device *dev)
 {
 	struct touchkey_i2c *tkey_i2c = dev_get_drvdata(dev);
@@ -1510,7 +1543,8 @@ static int touchkey_resume(struct device *dev)
 	return 0;
 }
 #endif
-static SIMPLE_DEV_PM_OPS(touchkey_pm_ops, touchkey_suspend, touchkey_resume);
+#endif
+//static SIMPLE_DEV_PM_OPS(touchkey_pm_ops, touchkey_suspend, touchkey_resume);
 
 #endif
 
@@ -2195,7 +2229,8 @@ static void cypress_request_gpio(struct touchkey_platform_data *pdata)
 		}
 	}
 #endif
-#ifndef TK_USE_LDO_CONTROL
+
+#ifndef TK_USE_LDO_CONTROL
 
 	if (tkey_gpio_i2cldo > 0) {
 		ret = gpio_request(tkey_gpio_i2cldo, "tkey_gpio_i2cldo");
@@ -2485,6 +2520,14 @@ static int i2c_touchkey_probe(struct i2c_client *client,
 	register_early_suspend(&tkey_i2c->early_suspend);
 #endif
 
+#ifdef CONFIG_POWERSUSPEND
+	tkey_i2c->power_suspend.suspend =
+		(void *)sec_touchkey_early_suspend;
+	tkey_i2c->power_suspend.resume =
+		(void *)sec_touchkey_late_resume;
+	register_power_suspend(&tkey_i2c->power_suspend);
+#endif
+
 /*	touchkey_stop(tkey_i2c); */
 	// complete_all(&tkey_i2c->init_done);
 	touchkey_probe = true;
@@ -2555,7 +2598,7 @@ struct i2c_driver touchkey_i2c_driver = {
 		.of_match_table = cypress_match_table,
 		#endif
 		
-		#if defined(CONFIG_PM) && !defined(CONFIG_HAS_EARLYSUSPEND) && !defined(USE_OPEN_CLOSE)
+		#if defined(CONFIG_PM) && !defined(CONFIG_HAS_EARLYSUSPEND) && !defined(CONFIG_POWERSUSPEND) && !defined(USE_OPEN_CLOSE)
 		.pm = &touchkey_pm_ops,
 		#endif
 	},
