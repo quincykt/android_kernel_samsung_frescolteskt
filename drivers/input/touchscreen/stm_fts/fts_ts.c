@@ -56,7 +56,7 @@
 
 #ifdef CONFIG_OF
 #ifndef USE_OPEN_CLOSE
-#define USE_OPEN_CLOSE
+#undef USE_OPEN_CLOSE
 #undef CONFIG_HAS_EARLYSUSPEND
 #undef CONFIG_PM
 #endif
@@ -143,6 +143,32 @@ static void fts_late_resume(struct early_suspend *h)
 }
 #endif
 
+#ifdef CONFIG_POWERSUSPEND
+#include <linux/powersuspend.h>
+struct fts_ts_info *shared_info = NULL;
+static void fts_early_suspend(struct power_suspend *h)
+{
+	//struct fts_ts_info *info;
+	printk("SHTSP: SUSPEND\n");
+	//info = container_of(h, struct fts_ts_info, power_suspend);
+	//fts_suspend(info->client, PMSG_SUSPEND);
+	fts_stop_device(shared_info);
+	printk("SHTSP: SUSPEND EXED\n");
+}
+static void fts_late_resume(struct power_suspend *h)
+{
+	//struct fts_ts_info *info;
+	printk("SHTSP: RESUME\n");
+	//info = container_of(h, struct fts_ts_info, power_suspend);
+	//fts_resume(info->client);
+	fts_start_device(shared_info);
+	printk("SHTSP: RESUME EXED\n");
+}
+static struct power_suspend fts_power_suspend = {
+	.suspend = fts_early_suspend,
+	.resume = fts_late_resume,
+};
+#endif
 
 #ifdef FTS_SUPPORT_TA_MODE
 extern void fts_register_callback(void *cb);
@@ -1595,6 +1621,11 @@ static int fts_probe(struct i2c_client *client, const struct i2c_device_id *idp)
 	complete_all(&info->init_done);
 #endif /* TSP_INIT_COMPLETE */
 
+#ifdef CONFIG_POWERSUSPEND
+	shared_info = info;
+	register_power_suspend(&fts_power_suspend);
+#endif
+
 	return 0;
 
 #ifdef SEC_TSP_FACTORY_TEST
@@ -1630,6 +1661,10 @@ static int fts_remove(struct i2c_client *client)
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	unregister_early_suspend(&info->early_suspend);
+#endif
+
+#ifdef CONFIG_POWERSUSPEND
+	unregister_power_suspend(&fts_power_suspend);
 #endif
 
 	fts_interrupt_set(info, INT_DISABLE);
@@ -2115,7 +2150,7 @@ static struct i2c_driver fts_i2c_driver = {
 		   },
 	.probe = fts_probe,
 	.remove = fts_remove,
-#if (!defined(CONFIG_HAS_EARLYSUSPEND)) && (!defined(CONFIG_PM)) && !defined(USE_OPEN_CLOSE)
+#if (!defined(CONFIG_POWERSUSPEND)) && (!defined(CONFIG_HAS_EARLYSUSPEND)) && (!defined(CONFIG_PM)) && !defined(USE_OPEN_CLOSE)
 	.suspend = fts_suspend,
 	.resume = fts_resume,
 #endif
